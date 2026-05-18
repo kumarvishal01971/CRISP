@@ -100,7 +100,23 @@ def build_customer_features():
     rfm["customer_segment"] = rfm.apply(segment, axis=1)
 
     # ── Churn label (no purchase in last 180 days) ────────────
-    rfm["churn_label"] = (rfm["recency_days"] > 180).astype(int)
+    # Churn = inactive AND low frequency AND low monetary (truly lost customers)
+    rfm["churn_label"] = (
+        (rfm["recency_days"] > 180) &
+        (rfm["frequency"] <= 2) &
+        (rfm["monetary"] < rfm["monetary"].median())
+    ).astype(int)
+
+
+    # Engagement score — higher is more engaged
+    rfm["engagement_score"] = (
+        rfm["avg_review_score"].fillna(3) * 0.3 +
+        np.log1p(rfm["frequency"]) * 0.4 +
+        (1 / (rfm["avg_delivery_delay"].fillna(0).abs() + 1)) * 0.3
+    )
+    
+    # Spend consistency
+    rfm["spend_per_order"] = rfm["monetary"] / rfm["frequency"].replace(0, 1)
 
     # ── Save ──────────────────────────────────────────────────
     rfm.to_csv(f"{PROCESSED}customer_analytics.csv", index=False)
