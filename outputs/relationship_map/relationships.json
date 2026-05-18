@@ -1,0 +1,48 @@
+{
+  "customers": {
+    "pk": "customer_id",
+    "fk_to": []
+  },
+  "orders": {
+    "pk": "order_id",
+    "fk_to": [
+      "customers.customer_id"
+    ]
+  },
+  "order_items": {
+    "pk": null,
+    "fk_to": [
+      "orders.order_id",
+      "products.product_id",
+      "sellers.seller_id"
+    ]
+  },
+  "order_payments": {
+    "pk": null,
+    "fk_to": [
+      "orders.order_id"
+    ]
+  },
+  "order_reviews": {
+    "pk": "review_id",
+    "fk_to": [
+      "orders.order_id"
+    ]
+  },
+  "products": {
+    "pk": "product_id",
+    "fk_to": []
+  },
+  "sellers": {
+    "pk": "seller_id",
+    "fk_to": []
+  },
+  "geolocation": {
+    "pk": null,
+    "fk_to": []
+  },
+  "product_category_name_translation": {
+    "pk": "product_category_name",
+    "fk_to": []
+  }
+}
