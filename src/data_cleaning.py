@@ -78,10 +78,10 @@ def clean_order_reviews():
 # ── PRODUCTS ──────────────────────────────────────────────────
 def clean_products():
     df = load("products")
-    df["product_category_name"].fillna("unknown", inplace=True)
+    df["product_category_name"] = df["product_category_name"].fillna("unknown")
     num_cols = ["product_weight_g", "product_length_cm", "product_height_cm", "product_width_cm"]
     for col in num_cols:
-        df[col].fillna(df[col].median(), inplace=True)
+        df[col] = df[col].fillna(df[col].median())
     df.drop_duplicates(subset="product_id", inplace=True)
     df.to_csv(f"{CLEAN}products.csv", index=False)
     print(f"✅ products: {df.shape}")
