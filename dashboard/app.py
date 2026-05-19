@@ -58,6 +58,14 @@ def load_log():
         return pd.read_csv(LOG_PATH)
     return pd.DataFrame()
 
+def fmt_currency(value):
+    if value >= 1_000_000:
+        return f"R$ {value/1_000_000:.1f}M"
+    elif value >= 1_000:
+        return f"R$ {value/1_000:.1f}K"
+    else:
+        return f"R$ {value:.0f}"
+
 # ── Sidebar ───────────────────────────────────────────────────
 st.sidebar.markdown("""
 <img src="https://i.postimg.cc/mrcFs9Lz/Pngtree-wolf-head-icon-logo-vector-5061887.png"
@@ -78,7 +86,7 @@ page = st.sidebar.radio("Navigate", [
 
 st.sidebar.markdown("---")
 st.sidebar.markdown(f"**Dataset:** {len(df):,} customers")
-st.sidebar.markdown(f"**Revenue at Risk:** R$ {df[df['churn_label']==1]['monetary'].sum():,.0f}")
+st.sidebar.markdown(f"**Revenue at Risk:** {fmt_currency(df[df['churn_label']==1]['monetary'].sum())}")
 
 # ══════════════════════════════════════════════════════════════
 # PAGE 1 — EXECUTIVE SUMMARY
@@ -89,8 +97,8 @@ if page == "🏠 Executive Summary":
 
     col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("Total Customers",  f"{len(df):,}")
-    col2.metric("Total Revenue",    f"R$ {df['monetary'].sum():,.0f}")
-    col3.metric("Avg CLV",          f"R$ {df['clv_estimate'].mean():,.0f}")
+    col2.metric("Total Revenue", fmt_currency(df['monetary'].sum()))
+    col3.metric("Avg CLV",       fmt_currency(df['clv_estimate'].mean()))
     col4.metric("Churn Rate",       f"{df['churn_label'].mean()*100:.1f}%")
     col5.metric("Repeat Rate",      f"{df['repeat_customer_flag'].mean()*100:.1f}%")
 
