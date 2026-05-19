@@ -1,0 +1,6 @@
+segment,customers,avg_actions,critical,high
+At Risk,15071,3.67,0,15071
+Churning,814,2.91,814,0
+Loyal,32399,2.8,603,7308
+Regular,39533,1.47,2513,17999
+VIP,8279,2.7,0,8279

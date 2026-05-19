@@ -217,5 +217,4 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 models/*.pkl
-models/recommendations/
 models/prediction_log.csv
