@@ -5,6 +5,7 @@ import pickle
 import plotly.express as px
 import plotly.graph_objects as go
 import os
+import datetime
 
 # ── Page config ───────────────────────────────────────────────
 st.set_page_config(
@@ -40,9 +41,30 @@ def load_model():
 df, orders, payments = load_data()
 model = load_model()
 
+LOG_PATH = "models/prediction_log.csv"
+
+def save_prediction(row: dict):
+    log_df = pd.DataFrame([row])
+    if os.path.exists(LOG_PATH):
+        existing = pd.read_csv(LOG_PATH)
+        updated  = pd.concat([existing, log_df], ignore_index=True)
+    else:
+        updated = log_df
+    updated.to_csv(LOG_PATH, index=False)
+    return updated
+
+def load_log():
+    if os.path.exists(LOG_PATH):
+        return pd.read_csv(LOG_PATH)
+    return pd.DataFrame()
+
 # ── Sidebar ───────────────────────────────────────────────────
-st.sidebar.image("https://img.icons8.com/fluency/96/combo-chart.png", width=60)
-st.sidebar.markdown("<h1 style='font-size:32px;'>CRISP</h1>", unsafe_allow_html=True)
+st.sidebar.markdown("""
+<img src="https://i.postimg.cc/mrcFs9Lz/Pngtree-wolf-head-icon-logo-vector-5061887.png"
+     width="180"
+     style="margin-left:-40px;">
+""", unsafe_allow_html=True)
+st.sidebar.markdown("<h1 style='font-size:40px;margin-top:-50px;'>CRISP</h1>", unsafe_allow_html=True)
 st.sidebar.caption("Customer Revenue Intelligence and Strategy Platform")
 
 page = st.sidebar.radio("Navigate", [
@@ -218,13 +240,13 @@ elif page == "📈 Revenue Analytics":
 elif page == "🔴 Churn Analysis":
     st.title("🔴 Churn Analysis")
 
-    churned  = df[df["churn_label"] == 1]
+    churned = df[df["churn_label"] == 1]
 
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Churn Rate",           f"{df['churn_label'].mean()*100:.1f}%")
-    col2.metric("Churned Customers",    f"{len(churned):,}")
-    col3.metric("Revenue at Risk",      f"R$ {churned['monetary'].sum():,.0f}")
-    col4.metric("Avg Recency (Churned)",f"{churned['recency_days'].mean():.0f} days")
+    col1.metric("Churn Rate",            f"{df['churn_label'].mean()*100:.1f}%")
+    col2.metric("Churned Customers",     f"{len(churned):,}")
+    col3.metric("Revenue at Risk",       f"R$ {churned['monetary'].sum():,.0f}")
+    col4.metric("Avg Recency (Churned)", f"{churned['recency_days'].mean():.0f} days")
 
     st.markdown("---")
     col1, col2 = st.columns(2)
@@ -321,20 +343,20 @@ elif page == "🤖 Churn Predictor":
         late_rate  = st.slider("Late Delivery Rate",        0.0, 1.0, 0.5)
 
     with col3:
-        tenure    = st.number_input("Customer Tenure (days)", 0, 1000, 30)
-        has_ticket= st.selectbox("Has Support Ticket", [1, 0])
-        channel   = st.selectbox("Acquisition Channel",
-                                 ["Google Ads","Instagram","Organic","Referral","Email"])
-        age_group = st.selectbox("Age Group", ["18-24","25-34","35-44","45-54","55+"])
-        income    = st.selectbox("Income Segment", ["Low","Mid","High"])
+        tenure     = st.number_input("Customer Tenure (days)", 0, 1000, 30)
+        has_ticket = st.selectbox("Has Support Ticket", [1, 0])
+        channel    = st.selectbox("Acquisition Channel",
+                                  ["Google Ads","Instagram","Organic","Referral","Email"])
+        age_group  = st.selectbox("Age Group", ["18-24","25-34","35-44","45-54","55+"])
+        income     = st.selectbox("Income Segment", ["Low","Mid","High"])
 
     # ── Encode ────────────────────────────────────────────────
-    channel_map = {"Google Ads": 0, "Email": 1, "Instagram": 2, "Organic": 3, "Referral": 4}
-    age_map     = {"18-24": 0, "25-34": 1, "35-44": 2, "45-54": 3, "55+": 4}
-    income_map  = {"High": 0, "Low": 1, "Mid": 2}
-    acq_cost_map= {"Google Ads": 18, "Instagram": 14, "Organic": 2, "Referral": 8, "Email": 3}
+    channel_map  = {"Google Ads": 0, "Email": 1, "Instagram": 2, "Organic": 3, "Referral": 4}
+    age_map      = {"18-24": 0, "25-34": 1, "35-44": 2, "45-54": 3, "55+": 4}
+    income_map   = {"High": 0, "Low": 1, "Mid": 2}
+    acq_cost_map = {"Google Ads": 18, "Instagram": 14, "Organic": 2, "Referral": 8, "Email": 3}
 
-    # ── Derived features (must match feature_engineering.py) ──
+    # ── Derived features ──────────────────────────────────────
     clv         = monetary * (1 + np.log1p(frequency))
     spend_per   = monetary / max(frequency, 1)
     engagement  = (avg_review * 0.3
@@ -345,7 +367,6 @@ elif page == "🤖 Churn Predictor":
 
     if st.button("🔮 Predict Churn Risk", type="primary"):
 
-        # Build in EXACT model feature order
         input_row = {
             "frequency":            float(frequency),
             "monetary":             float(monetary),
@@ -368,7 +389,30 @@ elif page == "🤖 Churn Predictor":
 
         features = pd.DataFrame([input_row])[model.feature_names_in_]
         prob      = model.predict_proba(features)[0][1]
+        risk      = "High" if prob >= 0.75 else "Medium" if prob >= 0.45 else "Low"
 
+        # ── Save to log ───────────────────────────────────────
+        log_entry = {
+            "timestamp":          datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "frequency":          frequency,
+            "total_spend":        round(monetary, 2),
+            "avg_order_value":    round(avg_order_value, 2),
+            "avg_review_score":   avg_review,
+            "avg_delivery_delay": avg_delay,
+            "late_delivery_rate": late_rate,
+            "tenure_days":        tenure,
+            "has_support_ticket": has_ticket,
+            "channel":            channel,
+            "age_group":          age_group,
+            "income_segment":     income,
+            "clv_estimate":       round(clv, 2),
+            "engagement_score":   round(engagement, 3),
+            "churn_probability":  round(prob * 100, 2),
+            "risk_level":         risk
+        }
+        updated_log = save_prediction(log_entry)
+
+        # ── Show result ───────────────────────────────────────
         st.markdown("---")
         col1, col2 = st.columns(2)
 
@@ -384,13 +428,15 @@ elif page == "🤖 Churn Predictor":
                 st.success("🟢 LOW CHURN RISK")
                 st.info("**Action:** Enroll in loyalty program")
 
-            # Show input summary
             st.markdown("**Input Summary:**")
             st.dataframe(pd.DataFrame({
-                "Feature": ["Frequency","Total Spend","CLV Estimate","Engagement Score","Spend/Order"],
+                "Feature": ["Frequency","Total Spend","CLV Estimate",
+                            "Engagement Score","Spend/Order"],
                 "Value":   [frequency, f"R$ {monetary:.2f}", f"R$ {clv:.2f}",
                             f"{engagement:.3f}", f"R$ {spend_per:.2f}"]
             }), hide_index=True, use_container_width=True)
+
+            st.success(f"✅ Prediction saved — {len(updated_log)} total predictions logged")
 
         with col2:
             fig = go.Figure(go.Indicator(
@@ -410,3 +456,55 @@ elif page == "🤖 Churn Predictor":
                 }
             ))
             st.plotly_chart(fig, use_container_width=True)
+
+    # ── Prediction History ─────────────────────────────────────
+    st.markdown("---")
+    st.subheader("📋 Prediction History")
+
+    log_df = load_log()
+
+    if not log_df.empty:
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Total Predictions", f"{len(log_df):,}")
+        col2.metric("High Risk",         f"{(log_df['risk_level']=='High').sum():,}")
+        col3.metric("Medium Risk",        f"{(log_df['risk_level']=='Medium').sum():,}")
+        col4.metric("Avg Churn Prob",    f"{log_df['churn_probability'].mean():.1f}%")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            risk_counts = log_df["risk_level"].value_counts().reset_index()
+            risk_counts.columns = ["Risk Level", "Count"]
+            color_map = {"High": "#EF553B", "Medium": "#FFA15A", "Low": "#00CC96"}
+            fig = px.bar(risk_counts, x="Risk Level", y="Count",
+                         title="Logged Predictions — Risk Distribution",
+                         color="Risk Level", color_discrete_map=color_map)
+            st.plotly_chart(fig, use_container_width=True)
+
+        with col2:
+            fig2 = px.line(log_df.reset_index(), x="index", y="churn_probability",
+                           color="risk_level",
+                           title="Churn Probability Over Predictions",
+                           color_discrete_map={"High":"#EF553B","Medium":"#FFA15A","Low":"#00CC96"},
+                           labels={"index":"Prediction #","churn_probability":"Churn %"})
+            st.plotly_chart(fig2, use_container_width=True)
+
+        st.dataframe(
+            log_df.sort_values("timestamp", ascending=False),
+            use_container_width=True,
+            height=300
+        )
+
+        csv = log_df.to_csv(index=False).encode("utf-8")
+        st.download_button(
+            label     = "⬇️ Download Prediction Log (CSV)",
+            data      = csv,
+            file_name = "churn_prediction_log.csv",
+            mime      = "text/csv"
+        )
+
+        if st.button("🗑️ Clear Prediction History"):
+            os.remove(LOG_PATH)
+            st.rerun()
+    else:
+        st.info("No predictions yet. Run a prediction above to start logging.")
