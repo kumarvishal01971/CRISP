@@ -1,6 +1,6 @@
 # CRISP : E-Commerce Analytics Platform
 
-> End-to-end Customer Revenue Intelligence & Strategy Platform built on 100K+ real e-commerce transactions.
+> Customer Revenue Intelligence & Strategy Platform (CRISP) built on 100K+ real e-commerce transactions.
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.45-red?logo=streamlit)
